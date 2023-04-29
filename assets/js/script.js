@@ -51,6 +51,7 @@ var createTaskEl = function(taskDataObj) {
 
   // add task id as a custom attribute
   listItemEl.setAttribute("data-task-id", taskIdCounter);
+  listItemEl.setAttribute("draggable", "true");
 
   // create div to hold task info and add to list item
   var taskInfoEl = document.createElement("div");
@@ -117,7 +118,7 @@ var createTaskActions = function(taskId) {
   return actionContainerEl;
 };
 
-formEl.addEventListener("submit", taskFormHandler);
+
 
 // function for delete button
 var taskButtonHandler = function(event) {
@@ -160,9 +161,6 @@ var deleteTask = function(taskId) {
   taskSelected.remove();
 };
 
-// eventListener for the delete button
-pageContentEl.addEventListener("click", taskButtonHandler);
-
 var completeEditTask = function(taskName, taskType, taskId) {
   // find the matching task list item
   var taskSelected = document.querySelector(".task-item[data-task-id='" + taskId + "']");
@@ -197,4 +195,62 @@ var taskStatusChangeHandler = function(event) {
  }
 };
 
-pageContentEl.addEventListener("change", taskStatusChangeHandler);
+var dragTaskHandler = function(event) {
+  var taskId = event.target.getAttribute("data-task-id");
+  event.dataTransfer.setData("text/plain", taskId);
+  var getId = event.dataTransfer.getData("text/plain");
+  console.log("getId:", getId, typeof getId);
+}
+
+var dropZoneDragHandler = function(event) {
+  var taskListEl = event.target.closest(".task-list");
+  if (taskListEl) { // if target is within the task list, return the DOM element which is truthy
+    // prevent default keep drag item in 1 place and allow dragged event to be dropped in a new location
+    event.preventDefault();
+    // change style when you drag from one container to the next
+    taskListEl.setAttribute("style", "background: rgba(68, 233, 255, 0.7); border-style: dashed;");
+  }  
+};
+
+var dropTaskHandler = function(event) {
+  var id = event.dataTransfer.getData("text/plain");
+  var draggableElement = document.querySelector("[data-task-id='" + id + "']");
+  var dropZoneEl = event.target.closest(".task-list");
+  var statusType = dropZoneEl.id;
+
+  // set status of task based on dropZone id 
+  var statusSelectEl = draggableElement.querySelector("select[name='status-change']");
+  // reassign the task
+  if (statusType === "tasks-to-do") {
+    statusSelectEl.selectedIndex = 0;
+  }
+  else if (statusType === "tasks-in-progress") {
+    statusSelectEl.selectedIndex = 1;
+  }
+  else if (statusType === "tasks-completed") {
+    statusSelectEl.selectedIndex = 2;
+  }
+
+  // remove style change when the new item is dropped
+  dropZoneEl.removeAttribute("style");
+
+  // append the item to its new parent element
+  dropZoneEl.appendChild(draggableElement);
+};
+
+var dragLeaveHandler = function(event) {
+  var taskListEl = event.target.closest(".task-list");
+  if (taskListEl) {
+    taskListEl.removeAttribute("style");
+  }
+}
+
+// eventListeners:
+formEl.addEventListener("submit", taskFormHandler); // add or save a task
+pageContentEl.addEventListener("change", taskStatusChangeHandler); // edit task status
+pageContentEl.addEventListener("click", taskButtonHandler); // delete button
+pageContentEl.addEventListener("dragstart", dragTaskHandler); // drag task to different section
+pageContentEl.addEventListener("dragover", dropZoneDragHandler); // dragover between sections
+pageContentEl.addEventListener("drop", dropTaskHandler); // drop the task in the new container
+pageContentEl.addEventListener("dragleave", dragLeaveHandler); // revert container to old style after item is dropped elsewhere
+
